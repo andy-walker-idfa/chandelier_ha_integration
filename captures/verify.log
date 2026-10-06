@@ -1,0 +1,165 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40378a06
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x10cc
+load:0x403c8700,len:0xc2c
+load:0x403cb700,len:0x30c0
+entry 0x403c88b8
+nRF24 найден.
+
+Команды: b (фон), s (скан с нажатиями), c N (канал), r N (0=1M,1=2M,2=250k),
+a N (адрес 0..3), f (фильтр), x (XN297 декод вкл/выкл), t (прицельный режим), p (сниффинг старт/стоп), # метка, ? справка
+Сейчас: канал 2, скорость 0, адрес 0, фильтр вкл, XN297 вкл, прицельный выкл, сниффинг выкл
+
+Команды: b (фон), s (скан с нажатиями), c N (канал), r N (0=1M,1=2M,2=250k),
+a N (адрес 0..3), f (фильтр), x (XN297 декод вкл/выкл), t (прицельный режим), p (сниффинг старт/стоп), # метка, ? справка
+Сейчас: канал 2, скорость 2, адрес 0, фильтр вкл, XN297 вкл, прицельный выкл, сниффинг выкл
+
+Команды: b (фон), s (скан с нажатиями), c N (канал), r N (0=1M,1=2M,2=250k),
+a N (адрес 0..3), f (фильтр), x (XN297 декод вкл/выкл), t (прицельный режим), p (сниффинг старт/стоп), # метка, ? справка
+Сейчас: канал 50, скорость 2, адрес 0, фильтр вкл, XN297 вкл, прицельный выкл, сниффинг выкл
+
+Команды: b (фон), s (скан с нажатиями), c N (канал), r N (0=1M,1=2M,2=250k),
+a N (адрес 0..3), f (фильтр), x (XN297 декод вкл/выкл), t (прицельный режим), p (сниффинг старт/стоп), # метка, ? справка
+Сейчас: канал 50, скорость 2, адрес 0, фильтр вкл, XN297 вкл, прицельный вкл, сниффинг выкл
+------------------------------
+# VERIFY ON
+
+Команды: b (фон), s (скан с нажатиями), c N (канал), r N (0=1M,1=2M,2=250k),
+a N (адрес 0..3), f (фильтр), x (XN297 декод вкл/выкл), t (прицельный режим), p (сниффинг старт/стоп), # метка, ? справка
+Сейчас: канал 50, скорость 2, адрес 0, фильтр вкл, XN297 вкл, прицельный вкл, сниффинг вкл
+[  129750] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 D6 CF EB 65 B7 
+[  129750] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129763] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 FA 9F 6D 5B 7E 
+[  129763] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129776] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 5F BF BF 7F FE 
+[  129776] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129789] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 AE D6 D6 BF 57 
+[  129789] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129802] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 DF F5 BB 73 66 
+[  129803] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129816] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 AD 9B EF ED BF 
+[  129816] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129829] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 EE BD 6D 97 CF 
+[  129829] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129842] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 DB 76 D5 B3 7F 
+[  129842] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129855] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 EF 54 D5 6A FB 
+[  129855] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129868] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 62 CF BC AD F3 
+[  129868] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129881] ch50 r2 T: BC 4F 32 A3 AE 2C 27 65 C8 8F 51 5B 5F FD EA FF 
+[  129882] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F5 EE 
+[  129943] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 EF BB FF 6F 69 
+[  129943] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  129956] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 EA FF 17 EB AB 
+[  129956] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  129969] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 FD FB 6E D7 BD 
+[  129969] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  129982] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 EF BD BB ED A2 
+[  129982] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  129995] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 DB F7 AC FC FA 
+[  129996] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  130008] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 77 ED FB FE BE 
+[  130009] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  130022] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 FD DA AD 7E AA 
+[  130022] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  130035] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 6E B6 BF 54 2B 
+[  130035] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  130048] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 CD 72 E4 DE BD 
+[  130048] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  130061] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 5E D7 EA 46 ED 
+[  130061] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  130074] ch50 r2 T: 3C 4F 32 A3 AE 2E E7 1E 82 C6 51 37 6D DB AD 5B 
+[  130074] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F6 30 
+[  130281] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 DD 7F AD DD 5E 
+[  130281] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130294] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 FF E7 DF DF FD 
+[  130294] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130307] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 5E FF 5F FD FF 
+[  130308] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130320] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 37 67 7B 7D B7 
+[  130321] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130334] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 FF B7 76 AE A5 
+[  130334] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130347] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 AF A6 FE EA EB 
+[  130347] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130360] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 5F FA EF 9F BF 
+[  130360] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130373] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 7E FA FB FB D5 
+[  130373] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130386] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 AF BF FD FD 3F 
+[  130386] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130399] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 7F 7D 77 F3 75 
+[  130400] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130413] ch50 r2 T: BC 4F 32 A3 AE 2C 67 1D 3A DC 51 FF EA DB FF 6A 
+[  130413] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F7 F0 
+[  130474] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 5F DD D1 5A A5 
+[  130475] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130488] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 FF 7B F6 FF EF 
+[  130488] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130501] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 DD B8 AC C4 AB 
+[  130501] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130514] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 7F DB ED 6E FF 
+[  130514] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130527] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 BA DC F5 4D ED 
+[  130527] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130540] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 5C D7 7B 6D 2E 
+[  130541] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130553] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 EA 69 F2 DF 5E 
+[  130554] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130567] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 EF F4 F7 6D 96 
+[  130567] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130580] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 75 7C FF F6 FE 
+[  130580] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130593] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 B5 AD FB F6 BD 
+[  130593] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130606] ch50 r2 T: 3C 4F 32 A3 AE 2E 97 5E C2 5B 51 BB 57 EB FE A9 
+[  130606] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 F8 32 
+[  130835] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 50 FD BF F5 DB EA 
+[  130835] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130848] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 4F FB ED DB FB 
+[  130848] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130861] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 DD FF B7 4A 12 
+[  130861] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130874] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 DD AE FD 7F B7 
+[  130875] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130887] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 7F EF FD 49 B4 
+[  130888] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130901] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 FF 9D DF 74 DD 
+[  130901] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130914] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 7B B5 1B FE 5B 
+[  130914] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130927] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 FF F7 FD DA FB 
+[  130927] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130940] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 7E 6A DE DD EF 
+[  130940] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130953] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 F5 AB DA B7 6E 
+[  130953] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  130966] ch50 r2 T: BC 4F 32 A3 AE 2C 17 5D 7A 41 51 5D E7 F7 FF F6 
+[  130967] XN297 OK addr AA55CCCCCC | payload 00 55 2A 75 00 05 F9 F2 
+[  131029] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 75 7F EC F6 F7 
+[  131029] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131042] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 D6 D7 D7 CB 7B 
+[  131042] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131055] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 EF 7B FF FE EF 
+[  131055] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131068] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 BF ED FD 57 67 
+[  131068] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131081] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 EE F9 FB A5 FF 
+[  131082] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131095] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 EE FE 9F DD FF 
+[  131095] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131108] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 EF FB EF EF FF 
+[  131108] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131121] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 BA BE DF 6B F6 
+[  131121] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131134] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 5F DF 5D 7D FD 
+[  131134] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131147] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 57 BE EB C8 56 
+[  131147] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
+[  131160] ch50 r2 T: 3C 4F 32 A3 AE 2E D7 3E A3 31 51 FE DD F9 CD DA 
+[  131161] XN297 OK addr AA55CCCCCC | payload 01 55 2A 75 00 45 FA 34 
