@@ -1,6 +1,7 @@
 #include "chandelier.h"
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
+#include "esphome/core/helpers.h"  // fnv1_hash() for the counter's flash key
 #include "esphome/core/hal.h"
 #include <Arduino.h>
 #include <SPI.h>

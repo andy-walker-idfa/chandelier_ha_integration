@@ -37,6 +37,12 @@ CONFIG_SCHEMA = cv.Schema(
 
 
 async def to_code(config):
+    # The component drives the nRF24 via the Arduino SPI library. Under the
+    # ESP-IDF build (Arduino as a managed component) SPI is a separate library
+    # whose include dir isn't on the path unless we declare it here. Arduino.h
+    # itself is already available; only <SPI.h> needs this.
+    cg.add_library("SPI", None)
+
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
     cg.add(var.set_ce_pin(config[CONF_CE_PIN]))
