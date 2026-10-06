@@ -19,7 +19,7 @@ this chandelier.
 | Modulation / data rate | GFSK, **250 kbps** |
 | Scrambling | **On** (standard XN297 scramble table) |
 | Preamble | `71 0F 55` |
-| Address | **5 bytes: `AA 55 CC CC CC`** (logical, de-scrambled) |
+| Address | **5 bytes: `AA 55 CC CC CC`** (logical, de-scrambled). Identical on both remotes captured, so it appears fixed for this product; the per-remote identity is in the payload ([Remotes](#remotes)). |
 | Payload length | 8 bytes |
 | CRC | **XN297 CRC-16** (CCITT poly `0x1021`, init `0xB5D2`, XN297 xorout table) |
 | Channel hopping | Yes — see [Channels](#channels) |
@@ -58,25 +58,69 @@ The 8-byte logical payload:
 
 | Byte | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
 |------|---|---|---|---|---|---|---|---|
-| Meaning | `phase` | `55` | `2A` | `75` | `00` | `command` | `counter` | `checksum` |
+| Meaning | `phase` | ID | ID | ID | ID | `command` | `counter` | `checksum` |
 
-- **`phase`** — `00` for the first burst of a press, `01` for the second burst
-  (see [Two-burst behavior](#two-burst-behavior)).
-- **Bytes 1–4 = `55 2A 75 00`** — constant across all buttons on this remote;
-  treated as the **remote/device ID**.
+- **`phase`** — `00` for the first burst of a press, then `01`, `02`, … for
+  each further burst while the button is held (see
+  [Two-burst behavior](#two-burst-behavior)).
+- **Bytes 1–4: remote ID.** Constant across all buttons of one remote and
+  different between remotes. Of the two remotes captured, only bytes 2–3 differ;
+  bytes 1 (`55`) and 4 (`00`) match. Whether those two are part of the ID or a
+  fixed header can't be told from two samples, so all four are treated as the ID
+  field. See [Remotes](#remotes).
 - **`command`** — the button, see [Commands](#commands).
 - **`counter`** — a one-byte rolling counter, **+1 per burst** (so each press
   consumes two consecutive values). Wraps `FF → 00`.
 - **`checksum`** — `sum(bytes 0..6) mod 256`.
 
+### Remotes
+
+Two remotes (one per chandelier) have been captured. Everything below was
+verified frame by frame with the XN297 CRC and the payload checksum.
+
+| | Remote 1 | Remote 2 |
+|---|---|---|
+| Radio address | `AA 55 CC CC CC` | `AA 55 CC CC CC` (**same**) |
+| ID bytes (payload 1–4) | `55 2A 75 00` | `55 5D 73 00` (**different**) |
+| Data rate / channel tested | 250 kbps, hops incl. ch 50 | 250 kbps, ch 50 |
+| Command bytes | ON `05`, OFF `09`, NIGHT `10`, DAY `11`, TEMP `07` | identical |
+| Phase ≥ 01 command | `command + 0x40` | identical |
+| Checksum / CRC | sum of bytes 0–6; XN297 CRC-16 | identical |
+| Frames verified | hundreds | 636 (635 CRC-valid, all checksum-valid) |
+
+Remote 2's full channel-hopping list wasn't swept. It was received on channel 50
+at the same rate and address, so it is assumed to use the same hop set.
+
+**What this means for independent control.** Both remotes share the radio
+address, so a receiver can't tell them apart by address. The lamps can tell them
+apart only by the ID bytes in the payload. Since the IDs differ, **independent
+radio control of the two chandeliers is possible in principle**: a transmitter
+can send either remote's ID.
+
+There's a caveat. The original problem was that **one remote currently controls
+both chandeliers**, which means at least one lamp accepts more than one remote
+ID. Which lamp responds to which ID is set by the lamps' pairing, and sniffing
+the remotes can't reveal it. Whether the two lamps can be separated therefore
+still has to be tested at the lamps; see [Open questions](#open-questions).
+
 ### Commands
 
-| Button | `command` byte (phase 00) | phase 01 (`+0x40`) |
-|--------|---------------------------|--------------------|
-| ON     | `05` | `45` |
-| OFF    | `09` | `49` |
-| NIGHT  | `10` | `50` |
-| DAY    | `11` | `51` |
+| Button | `command` byte (phase 00) | phase ≥ 01 (`+0x40`) | Semantics |
+|--------|---------------------------|----------------------|-----------|
+| ON         | `05` | `45` | Absolute (sets a state) |
+| OFF        | `09` | `49` | Absolute |
+| NIGHT      | `10` | `50` | *Pending verification* |
+| DAY        | `11` | `51` | *Pending verification* |
+| TEMP cycle | `07` | `47` | **Relative** — advances to the next color-temperature preset |
+
+**Absolute vs relative.** An *absolute* command puts the lamp into a known state
+no matter what it was doing, so sending it twice is harmless. A *relative*
+command changes the state based on the current one. The TEMP-cycle button is
+relative: each press advances to the next preset in a loop, and the protocol
+carries **no absolute color-temperature value**. A controller cannot read back or
+directly select a preset; it can only count presses from a known starting point.
+For the same reason a transmitter must not repeat a relative press with new
+counter values, since each repeat may advance the preset again.
 
 ### Two-burst behavior
 
@@ -95,9 +139,24 @@ phase 00:  00 55 2A 75 00 05 <ctr>   <checksum>
 phase 01:  01 55 2A 75 00 45 <ctr+1> <checksum>
 ```
 
+**The phase byte appears to count hold-repeats.** It is not always exactly two
+bursts. Very quick taps were captured with only a phase-00 burst, and a TEMP
+press held slightly longer produced a third burst, phase `02`:
+
+```
+00 55 2A 75 00 07 2A <cs>    # press
+01 55 2A 75 00 47 2B <cs>    # +200 ms
+02 55 2A 75 00 47 2C <cs>    # +200 ms
+```
+
+The working theory is that the remote sends one burst every ~200 ms while the
+button is held, with `phase` incrementing each time and the command carrying
+`+0x40` from phase 01 onward. A transmitter sending phase 00 + phase 01 matches a
+normal short press. What a long hold (many phases) does on the lamp is untested.
+
 ### Worked example
 
-A real ON press captured at 250 kbps on channel 50:
+A real ON press from remote 1, captured at 250 kbps on channel 50:
 
 ```
 00 55 2A 75 00 05 F5 EE      # phase 00, cmd 05 (ON),  ctr F5, checksum EE
@@ -119,10 +178,16 @@ These are **not yet verified** and are the current focus of work:
   this has not been confirmed by a controlled replay yet.)
 - **Is the channel list complete?** The 14 channels above were found by a sweep
   with short dwell times; there may be more.
-- **Do the second remote / second chandelier share the same ID?** Bytes `55 2A
-  75 00` may be per-remote. A second remote might use a different ID (and that is
-  likely the root of the "one remote controls both" pairing problem). Needs a
-  capture from the second remote.
+- **Which lamp accepts which remote ID?** *(Partly answered.)* The second remote
+  has been captured: same radio address, **different ID** (`55 5D 73 00` vs
+  `55 2A 75 00`). What's still unknown is the lamps' pairing. Since one remote
+  currently drives both chandeliers, at least one lamp accepts both IDs. To
+  find out, transmit with each ID in turn and note which lamp(s) react. If both
+  lamps respond to one ID, the lamps will need re-pairing (or a new ID per lamp)
+  before they can be controlled independently. Many lamps of this type have a
+  re-pair procedure, but none has been tested on these.
+- **Are ID bytes 1 and 4 part of the ID?** Both remotes have `55` and `00` there;
+  more remotes would be needed to tell.
 
 ## How this was captured
 

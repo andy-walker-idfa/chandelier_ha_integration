@@ -1,0 +1,111 @@
+# ESPHome config for the chandelier bridge (ESP32-S3 + nRF24L01+).
+#
+# One device drives both chandeliers over RF. Entities in Home Assistant:
+#   light.chandelier_1 / light.chandelier_2         (on/off, optimistic)
+#   button.chandelier_1_night / _day / _next_temperature
+#   button.chandelier_2_night / _day / _next_temperature
+#
+# Lamp IDs (payload bytes 1-4, from PROTOCOL.md):
+#   Chandelier 1 = 55 2A 75 00
+#   Chandelier 2 = 55 5D 73 00
+# Both lamps share the radio address AA 55 CC CC CC; only the payload ID differs.
+#
+# Fill secrets.yaml first (copy example.secrets.yaml). See README.md.
+
+substitutions:
+  device_name: chandelier-bridge
+
+esphome:
+  name: ${device_name}
+  friendly_name: Chandelier Bridge
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino   # the RF component uses the Arduino SPI library + RGB LED
+
+logger:             # each send logs: command, lamp ID, counter range, frame count
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:               # fallback hotspot if Wi-Fi is unavailable
+    ssid: "Chandelier Bridge"
+    password: !secret ap_password
+
+captive_portal:
+
+# --- the RF bridge component (local external component) ---
+external_components:
+  - source:
+      type: local
+      path: components
+
+chandelier:
+  id: hub
+  ce_pin: 9
+  cs_pin: 10
+  sck_pin: 12
+  mosi_pin: 11
+  miso_pin: 13
+  frames_per_burst: 30   # redundancy per burst; raise for more range
+
+light:
+  - platform: chandelier
+    name: "Chandelier 1"
+    chandelier_id: hub
+    lamp_id: [0x55, 0x2A, 0x75, 0x00]
+    restore_mode: ALWAYS_OFF   # never transmit on boot; starts "off" in HA
+  - platform: chandelier
+    name: "Chandelier 2"
+    chandelier_id: hub
+    lamp_id: [0x55, 0x5D, 0x73, 0x00]
+    restore_mode: ALWAYS_OFF
+
+button:
+  # --- Chandelier 1 ---
+  - platform: template
+    name: "Chandelier 1 Night"
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x2A, 0x75, 0x00, 0x10);'
+  - platform: template
+    name: "Chandelier 1 Day"
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x2A, 0x75, 0x00, 0x11);'
+  - platform: template
+    name: "Chandelier 1 Next Temperature"   # relative: one step per press, no absolute state
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x2A, 0x75, 0x00, 0x07);'
+  # --- Chandelier 2 ---
+  - platform: template
+    name: "Chandelier 2 Night"
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x5D, 0x73, 0x00, 0x10);'
+  - platform: template
+    name: "Chandelier 2 Day"
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x5D, 0x73, 0x00, 0x11);'
+  - platform: template
+    name: "Chandelier 2 Next Temperature"
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x5D, 0x73, 0x00, 0x07);'
+
+# To adjust frames-per-burst live from HA, uncomment:
+# number:
+#   - platform: template
+#     name: "Frames per burst"
+#     optimistic: true
+#     min_value: 1
+#     max_value: 60
+#     step: 1
+#     initial_value: 30
+#     set_action:
+#       - lambda: 'id(hub).set_frames_per_burst((uint8_t) x);'

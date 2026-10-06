@@ -34,6 +34,13 @@ longer sweeps.
 | `buttons_t.log` | Targeted-mode capture of ON/OFF/NIGHT/DAY — the clean per-button decode. |
 | `verify.log` | Targeted capture confirming the firmware's own `XN297 OK` decode of ON. |
 | `live_ctr.log` | A single live ON press used to read the remote's current rolling-counter value. |
+| `temp_cycle.log` | Targeted capture of six presses of the TEMP-cycle button (`07`/`47`), showing the phase-02 hold burst. |
+| `remote2_probe.log` | **Second remote**, ON ×5 in targeted mode (ch 50). Showed the same radio address as remote 1 with a different payload ID. |
+| `remote2_buttons.log` | **Second remote**, OFF / NIGHT / DAY / TEMP ×5 each, labeled `# R2 <button>`. |
+
+> **Before committing a new log:** firmware with Wi-Fi enabled prints the board's
+> LAN IP address at boot. Strip that line (and anything else network-related)
+> from logs before adding them to the repo.
 
 ## Reproducing
 

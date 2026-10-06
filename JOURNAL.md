@@ -94,6 +94,33 @@ Home Assistant. Several approaches were tried and rejected before landing on
   `firmware/transmitter/`, `captures/`, `tools/`, and wrote README / PROTOCOL /
   HARDWARE / this journal. MIT license.
 
+### 2026-10-06 — Range, redundancy, and a phone remote
+
+- Transmit confirmed working at ~3 m with an occasional dropped frame, so I added
+  configurable redundancy: 30 frames per burst, with the whole press repeated up to
+  3×. That made it reliable across the room.
+- Decoded the color-temperature button: **`07`**, a *relative* "next preset"
+  command. Its capture also showed a third burst (phase `02`), which suggests the
+  phase byte counts hold-repeats rather than being fixed at two bursts. Relative
+  commands are now sent as a single press so a repeat can't skip a preset.
+- Added a small Wi-Fi web page to the bridge (big buttons, phone-friendly) so every
+  command can be tested standing under the chandelier, without a laptop. The
+  credentials live in a gitignored `secrets.h`.
+
+### 2026-10-06 — Second remote, and the Home Assistant integration
+
+- Captured the second chandelier's remote. Same radio address (`AA 55 CC CC CC`),
+  but a **different payload ID** (`55 5D 73 00` vs `55 2A 75 00`) — so the two
+  lamps *can* be addressed separately over radio. Whether they can actually be
+  separated depends on the lamps' pairing, which is still untested (one remote
+  currently drives both).
+- Built the final firmware as an **ESPHome external component**. The XN297
+  transmit code is reused verbatim from the sniffer; only the ESPHome wrapper
+  (an on/off light + Night/Day/Next-Temperature buttons per lamp, parameterized by
+  lamp ID) is new. Both chandeliers now appear as Home Assistant entities over
+  Wi-Fi. Counter persists in flash; the light is optimistic (one-way radio) and
+  never transmits on boot.
+
 ---
 
 *Next: confirm transmit reception up close, resolve the counter question, then

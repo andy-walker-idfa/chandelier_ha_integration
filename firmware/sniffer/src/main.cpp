@@ -26,9 +26,19 @@
     t        - прицельный режим: настоящий адрес пульта вместо приманки (нужна скорость r 2)
     p        - старт/стоп сниффинга
     TX <hex> - передать нажатие кнопки (эмуляция пульта): пачка фазы 00, затем фазы 01.
-               Напр. TX 05 = ВКЛ, 09 = ВЫКЛ, 10 = НОЧНИК, 11 = ДЕНЬ. После - снова приём.
+               Напр. TX 05 = ВКЛ, 09 = ВЫКЛ, 10 = НОЧНИК, 11 = ДЕНЬ, 07 = ТЕМП.ЦИКЛ.
+               После - снова приём. ТЕМП.ЦИКЛ относительная: шлётся одно нажатие (без PRESSREP).
+    IP       - адрес веб-пульта. Wi-Fi из src/secrets.h (шаблон secrets.example.h, не в git).
+               Светодиод при старте: синее мигание = подключение, 3 зелёные вспышки = в сети,
+               длинная красная = не подключилось. Страница: http://<IP>/ или chandelier-bridge.local
     CTR <n>  - задать стартовый счётчик для TX (для проверки replay со старым значением).
                Счётчик хранится в NVS и +1 на каждую пачку (нажатие тратит 2 значения).
+    REP <n>  - кадров в одной пачке (по умолчанию 24, крутятся по списку каналов). NVS.
+    PRESSREP <n> - сколько раз повторить всю последовательность нажатия (по умолч. 2). NVS.
+    PING     - одиночная отправка, чередует ВКЛ/ВЫКЛ (удобно щёлкать вручную).
+    RANGE <сек> - авто-тест дальности: сам шлёт ВКЛ/ВЫКЛ каждые N секунд; RANGE 0 - выкл.
+               Хранится в NVS и переживает перезагрузку - можно ходить с повербанком без ПК.
+               Светодиод мигает на каждой отправке - видно даже когда люстра не реагирует.
     AUTO 0/1 - авто-тест передачи на старте (хранится в NVS, по умолчанию вкл): через 10 с
                после включения шлёт ВКЛ, пауза 8 с, шлёт ВЫКЛ. Для проверки у люстры без ПК.
                Статусный RGB-светодиод: медленно мигает = взведён, горит = идёт передача,
@@ -42,12 +52,26 @@
     Каналы (прыгает, пачка ~10 пакетов через 13 мс): 0 2 5 18 21 34 37 45 47 50 53 66 69 82.
     Нагрузка: [фаза] 55 2A 75 00 [команда] [счётчик] [сумма байт 0..6]
       фаза 00 - нажатие, 01 - вторая пачка через ~200 мс (команда | 0x40)
-      команды: ВКЛ 05, ВЫКЛ 09, НОЧНИК 10, ДЕНЬ 11; счётчик +1 на каждую пачку
+      команды: ВКЛ 05, ВЫКЛ 09, НОЧНИК 10, ДЕНЬ 11, ТЕМП.ЦИКЛ 07; счётчик +1 на каждую пачку
+      при удержании идут и следующие фазы (02, ...) раз в ~200 мс
     Быстрый приём: r 2, c 50, t, p
 */
 
 #include <SPI.h>
 #include <Preferences.h>
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
+
+// Wi-Fi: логин/пароль лежат в src/secrets.h (не в git, шаблон - secrets.example.h).
+// Нет файла или пустой SSID - работаем без Wi-Fi, только Serial.
+#if __has_include("secrets.h")
+  #include "secrets.h"
+#endif
+#ifndef WIFI_SSID
+  #define WIFI_SSID ""
+  #define WIFI_PASSWORD ""
+#endif
 
 #if defined(CONFIG_IDF_TARGET_ESP32S3)
   // ESP32-S3-DevKitC-1, разъём J1
@@ -122,6 +146,18 @@ uint32_t counter = 0;
 // Авто-тест на старте: удобно проверить передачу у самой люстры без компьютера.
 // Хранится в NVS (по умолчанию вкл); выключается командой AUTO 0 или флагом сборки.
 bool autoTest = true;
+
+// Избыточность передачи (всё хранится в NVS, меняется на лету).
+// framesPerBurst - сколько кадров в одной пачке (крутим по списку каналов);
+// pressReps      - сколько раз повторить всю последовательность нажатия.
+uint8_t framesPerBurst = 24;   // было ~10 (один кадр на канал)
+uint8_t pressReps = 2;
+
+// Авто-режим для теста дальности: сам чередует ВКЛ/ВЫКЛ раз в несколько секунд.
+bool rangeMode = false;
+uint32_t rangeInterval = 3000;
+uint32_t rangeLast = 0;
+bool pressNextOn = true;       // какая команда уйдёт следующей (PING и RANGE)
 
 // ---------- низкоуровневый SPI ----------
 uint8_t readReg(uint8_t reg) {
@@ -400,6 +436,13 @@ void ledSet(bool on) {
   (void)on;
 #endif
 }
+void ledColor(uint8_t r, uint8_t g, uint8_t b) {
+#ifdef RGB_BUILTIN
+  rgbLedWrite(RGB_BUILTIN, r, g, b);
+#else
+  ledSet(r || g || b);
+#endif
+}
 void ledBlink(uint8_t n, uint16_t on_ms = 120, uint16_t off_ms = 120) {
   for (uint8_t i = 0; i < n; i++) { ledSet(true); delay(on_ms); ledSet(false); delay(off_ms); }
 }
@@ -454,38 +497,54 @@ void txFrame(uint8_t ch, const uint8_t payload8[8]) {
   writeReg(REG_STATUS, 0x70);
 }
 
-// Пачка из ~одного прохода по всем каналам, счётчик в пачке постоянный.
-void txBurst(uint8_t phase, uint8_t cmd, uint8_t ctr) {
+// Одна пачка: framesPerBurst кадров, по кругу списка каналов; счётчик постоянный.
+// Без печати на кадр - сводка выводится в doTx. Возвращает число отправленных кадров.
+uint16_t txBurst(uint8_t phase, uint8_t cmd, uint8_t ctr) {
   uint8_t pl[8] = {phase, 0x55, 0x2A, 0x75, 0x00, cmd, ctr, 0};
   uint16_t s = 0;
   for (uint8_t i = 0; i < 7; i++) s += pl[i];
   pl[7] = s & 0xFF;                // контрольная сумма = сумма байт 0..6
 
-  Serial.printf("  TX пачка фаза %02X: ", phase);
-  for (uint8_t i = 0; i < 8; i++) Serial.printf("%02X ", pl[i]);
-  Serial.printf(" -> каналы");
   ledSet(true);                    // светодиод горит, пока идёт пачка = видно передачу
-  for (uint8_t i = 0; i < NCH; i++) {
-    Serial.printf(" %u", CHANNELS[i]);
-    txFrame(CHANNELS[i], pl);
+  for (uint16_t i = 0; i < framesPerBurst; i++) {
+    txFrame(CHANNELS[i % NCH], pl);
     delayMicroseconds(800);
   }
   ledSet(false);
-  Serial.println();
+  return framesPerBurst;
 }
 
-// Полное "нажатие": пачка фазы 00, затем через ~200 мс пачка фазы 01 (команда|0x40).
+// Команды кнопок пульта.
+const uint8_t CMD_ON = 0x05, CMD_OFF = 0x09, CMD_NIGHT = 0x10, CMD_DAY = 0x11, CMD_TEMP = 0x07;
+
+// Относительная команда ("следующий пресет") - повтор нажатия с новым счётчиком
+// сдвинет пресет ещё раз. Для неё шлём одно нажатие; избыточность даёт framesPerBurst
+// (одинаковые кадры одной пачки люстра склеивает - пульт сам шлёт их ~10 подряд).
+bool isRelative(uint8_t cmd) { return cmd == CMD_TEMP; }
+
+// Что ушло при последней передаче (для веб-страницы).
+struct TxInfo { uint8_t cmd, ctrFrom, ctrTo, reps; uint16_t frames; };
+TxInfo lastTx = {0, 0, 0, 0, 0};
+
+// Полное "нажатие": пачка фазы 00, пауза ~200 мс, пачка фазы 01 (команда|0x40).
+// Повторяется pressReps раз (пауза ~30 мс между повторами), для относительных команд - 1 раз.
+// Счётчик +1 на пачку, в каждой пачке постоянный - каждый кадр валиден по сумме/CRC.
 void doTx(uint8_t cmd) {
   bool wasSniff = sniffing;
-  Serial.printf("[%8lu] Передаю команду %02X, стартовый счётчик %u (0x%02X)\n",
-                millis(), cmd, (unsigned)counter, counter & 0xFF);
+  uint8_t ctrStart = counter & 0xFF;
+  uint8_t reps = isRelative(cmd) ? 1 : pressReps;
+  uint16_t total = 0;
   radioTxSetup();
 
-  txBurst(0x00, cmd, counter & 0xFF);
-  counter++;
-  delay(200);
-  txBurst(0x01, cmd | 0x40, counter & 0xFF);
-  counter++;
+  for (uint8_t pr = 0; pr < reps; pr++) {
+    total += txBurst(0x00, cmd, counter & 0xFF);
+    counter++;
+    delay(200);
+    total += txBurst(0x01, cmd | 0x40, counter & 0xFF);
+    counter++;
+    if (pr + 1 < reps) delay(30);
+  }
+  lastTx = {cmd, ctrStart, (uint8_t)((counter - 1) & 0xFF), reps, total};
 
   prefs.putUInt("ctr", counter);
 
@@ -493,8 +552,12 @@ void doTx(uint8_t cmd) {
   delay(2);
   sniffing = wasSniff;
   applySniffConfig();              // восстановит канал/адрес и приём
-  Serial.printf("[%8lu] TX готово. Счётчик теперь %u (0x%02X). Приём возобновлён.\n",
-                millis(), (unsigned)counter, counter & 0xFF);
+
+  // Сжатая сводка вместо каждого кадра.
+  Serial.printf("[%8lu] TX %02X (phase01 %02X): %u нажат.x2 пачки x%u кадров = %u кадров, "
+                "счётчик 0x%02X..0x%02X, каналы %u шт (0..82). Приём возобновлён.\n",
+                millis(), cmd, cmd | 0x40, reps, framesPerBurst, total,
+                ctrStart, (uint8_t)((counter - 1) & 0xFF), NCH);
 }
 
 // Авто-тест на старте: взвестись, передать ВКЛ, пауза, передать ВЫКЛ. Для проверки
@@ -523,11 +586,196 @@ void runAutoTest() {
   Serial.println(F("Авто-тест завершён. Обычный приём (r2 c50 прицельный)."));
 }
 
+// ---------- Wi-Fi и веб-пульт ----------
+// Простая страница для телефона: кнопка на каждую команду + число кадров в пачке.
+// Все кнопки вызывают тот же doTx, что и команда TX в Serial. Без авторизации -
+// только для домашней сети, наружу не пробрасывать.
+WebServer server(80);
+bool wifiUp = false;
+const char *MDNS_NAME = "chandelier-bridge";
+
+static const char PAGE[] PROGMEM = R"HTML(<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chandelier Bridge</title>
+<style>
+:root{--bg:#f4f4f2;--fg:#1d1d1b;--card:#fff;--line:#d8d8d4;--acc:#2f6fdf;--mut:#6b6b66}
+@media (prefers-color-scheme:dark){:root{--bg:#141414;--fg:#ececea;--card:#1f1f1f;--line:#333;--acc:#6f9cf0;--mut:#9a9a94}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);
+font:16px/1.4 system-ui,-apple-system,sans-serif;padding:16px;max-width:520px;margin:auto}
+h1{font-size:20px;margin:4px 0 16px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+button{font:inherit;font-size:20px;font-weight:600;min-height:84px;border-radius:14px;
+border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button small{display:block;font-size:13px;font-weight:400;color:var(--mut)}
+button:active{transform:scale(.98)}button:disabled{opacity:.45}
+.wide{grid-column:1/-1}
+#st{margin:16px 0;padding:12px;border-radius:12px;background:var(--card);
+border:1px solid var(--line);font-size:14px;min-height:48px}
+.row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.row button{min-height:52px;flex:0 0 64px;font-size:22px}
+.row input{flex:1;min-height:52px;font:inherit;font-size:20px;text-align:center;
+border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
+.ok{color:#2c8a3a}.err{color:#c23b2a}
+</style></head><body>
+<h1>Chandelier Bridge</h1>
+<div class="grid">
+<button data-c="05">ON<small>05</small></button>
+<button data-c="09">OFF<small>09</small></button>
+<button data-c="10">NIGHT<small>10</small></button>
+<button data-c="11">DAY<small>11</small></button>
+<button data-c="07" class="wide">TEMP cycle<small>07 &middot; next preset, one step per tap</small></button>
+</div>
+<div id="st">Ready.</div>
+<div>Frames per burst</div>
+<div class="row"><button id="dn">&minus;</button><input id="rep" type="number" min="1" max="60">
+<button id="up">+</button></div>
+<div class="row"><button id="set" style="flex:1">Set</button></div>
+<script>
+const st=document.getElementById('st'),rep=document.getElementById('rep');
+const btns=[...document.querySelectorAll('button[data-c]')];
+function show(t,c){st.innerHTML='<span class="'+(c||'')+'">'+t+'</span>';}
+async function post(u,d){const r=await fetch(u,{method:'POST',body:new URLSearchParams(d)});
+if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+async function status(){try{const s=await(await fetch('/status')).json();rep.value=s.rep;
+show('Ready. '+s.rep+' frames/burst, '+s.pressreps+' press repeats, counter 0x'+s.ctr);}
+catch(e){show('Offline: '+e.message,'err');}}
+btns.forEach(b=>b.onclick=async()=>{btns.forEach(x=>x.disabled=true);
+show('Sending '+b.firstChild.textContent+'...');
+try{const r=await post('/tx',{cmd:b.dataset.c});
+show(b.firstChild.textContent+' sent: '+r.frames+' frames, '+r.reps+'&times; press, counter 0x'+r.from+'..0x'+r.to,'ok');}
+catch(e){show('Failed: '+e.message,'err');}
+btns.forEach(x=>x.disabled=false);});
+document.getElementById('dn').onclick=()=>rep.value=Math.max(1,(+rep.value||1)-1);
+document.getElementById('up').onclick=()=>rep.value=Math.min(60,(+rep.value||1)+1);
+document.getElementById('set').onclick=async()=>{try{const r=await post('/rep',{n:rep.value});
+rep.value=r.rep;show('Frames per burst set to '+r.rep,'ok');}catch(e){show('Failed: '+e.message,'err');}};
+status();
+</script></body></html>)HTML";
+
+void handleRoot() { server.send_P(200, "text/html; charset=utf-8", PAGE); }
+
+void handleStatus() {
+  char buf[96];
+  snprintf(buf, sizeof(buf), "{\"rep\":%u,\"pressreps\":%u,\"ctr\":\"%02X\"}",
+           framesPerBurst, pressReps, (unsigned)(counter & 0xFF));
+  server.send(200, "application/json", buf);
+}
+
+void handleTx() {
+  if (!server.hasArg("cmd")) { server.send(400, "application/json", "{\"error\":\"cmd\"}"); return; }
+  uint8_t cmd = (uint8_t)strtol(server.arg("cmd").c_str(), nullptr, 16);
+  if (cmd != CMD_ON && cmd != CMD_OFF && cmd != CMD_NIGHT && cmd != CMD_DAY && cmd != CMD_TEMP) {
+    server.send(400, "application/json", "{\"error\":\"unknown cmd\"}");
+    return;
+  }
+  Serial.printf("[WEB] TX %02X\n", cmd);
+  doTx(cmd);
+  char buf[128];
+  snprintf(buf, sizeof(buf), "{\"cmd\":\"%02X\",\"from\":\"%02X\",\"to\":\"%02X\",\"reps\":%u,\"frames\":%u}",
+           lastTx.cmd, lastTx.ctrFrom, lastTx.ctrTo, lastTx.reps, lastTx.frames);
+  server.send(200, "application/json", buf);
+}
+
+void handleRep() {
+  int v = server.hasArg("n") ? server.arg("n").toInt() : 0;
+  if (v < 1) v = 1; if (v > 60) v = 60;
+  framesPerBurst = (uint8_t)v;
+  prefs.putUChar("rep", framesPerBurst);
+  Serial.printf("[WEB] Кадров в пачке: %u\n", framesPerBurst);
+  char buf[32];
+  snprintf(buf, sizeof(buf), "{\"rep\":%u}", framesPerBurst);
+  server.send(200, "application/json", buf);
+}
+
+void printWifi() {
+  if (wifiUp)
+    Serial.printf("Wi-Fi: подключено. Веб-пульт: http://%s/  (или http://%s.local/)\n",
+                  WiFi.localIP().toString().c_str(), MDNS_NAME);
+  else
+    Serial.println(F("Wi-Fi: не подключено (нет src/secrets.h, пустой SSID или сеть недоступна)."));
+}
+
+// Почему не подключились: код статуса + видна ли наша сеть в эфире (имена сетей не печатаем).
+void wifiDiag(wl_status_t st) {
+  const char *why = st == WL_NO_SSID_AVAIL ? "сеть не найдена"
+                  : st == WL_CONNECT_FAILED ? "отказ при подключении (часто неверный пароль)"
+                  : st == WL_DISCONNECTED ? "не дождались подключения/DHCP"
+                  : "другое";
+  Serial.printf("Wi-Fi: статус %d (%s)\n", (int)st, why);
+  WiFi.disconnect(false);  // скан не работает, пока идёт попытка подключения
+  delay(100);
+  int n = WiFi.scanNetworks();
+  if (n < 0) { Serial.printf("Wi-Fi: скан не удался (%d)\n", n); return; }
+  int found = -1;
+  for (int i = 0; i < n; i++) if (WiFi.SSID(i) == WIFI_SSID) { found = i; break; }
+  if (found < 0) {
+    Serial.printf("Wi-Fi: в эфире %d сетей 2.4 ГГц, нашей среди них нет "
+                  "(только 5 ГГц? скрытая? далеко?)\n", n);
+    // Подсказка без имён: есть ли сеть, отличающаяся регистром или суффиксом.
+    String want = WIFI_SSID; want.toLowerCase();
+    for (int i = 0; i < n; i++) {
+      String s = WiFi.SSID(i); s.toLowerCase();
+      if (s == want)
+        Serial.printf("Wi-Fi: есть сеть с тем же именем, но другим РЕГИСТРОМ букв (RSSI %d)\n", WiFi.RSSI(i));
+      else if (s.length() > 0 && (s.startsWith(want) || want.startsWith(s)))
+        Serial.printf("Wi-Fi: есть сеть с похожим именем (длина %u вместо %u - суффикс?), RSSI %d\n",
+                      s.length(), want.length(), WiFi.RSSI(i));
+    }
+  } else {
+    wifi_auth_mode_t a = WiFi.encryptionType(found);
+    Serial.printf("Wi-Fi: наша сеть видна, RSSI %d дБм, канал %d, защита %s\n",
+                  WiFi.RSSI(found), WiFi.channel(found),
+                  a == WIFI_AUTH_WPA3_PSK ? "WPA3 (только!)"
+                  : a == WIFI_AUTH_WPA2_WPA3_PSK ? "WPA2/WPA3"
+                  : a == WIFI_AUTH_WPA2_PSK ? "WPA2"
+                  : a == WIFI_AUTH_WPA_WPA2_PSK ? "WPA/WPA2"
+                  : a == WIFI_AUTH_OPEN ? "открытая" : "другая");
+  }
+  WiFi.scanDelete();
+}
+
+// Подключение к Wi-Fi. SSID и пароль в Serial не печатаем (логи уходят в git).
+// Светодиод: 3 зелёные вспышки = в сети; одна длинная красная = не вышло.
+void wifiSetup() {
+  if (strlen(WIFI_SSID) == 0) { printWifi(); return; }
+  Serial.println(F("Wi-Fi: подключаюсь..."));
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);  // быстрее отвечает странице
+  WiFi.setHostname(MDNS_NAME);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  for (uint32_t t0 = millis(); WiFi.status() != WL_CONNECTED && millis() - t0 < 20000;) {
+    ledColor(0, 0, (millis() / 250) % 2 ? 20 : 0);  // синее мигание = подключаюсь
+    delay(50);
+  }
+  wifiUp = WiFi.status() == WL_CONNECTED;
+  if (wifiUp) {
+    MDNS.begin(MDNS_NAME);
+    server.on("/", HTTP_GET, handleRoot);
+    server.on("/status", HTTP_GET, handleStatus);
+    server.on("/tx", HTTP_POST, handleTx);
+    server.on("/rep", HTTP_POST, handleRep);
+    server.begin();
+    MDNS.addService("http", "tcp", 80);
+    for (int i = 0; i < 3; i++) { ledColor(0, 40, 0); delay(250); ledColor(0, 0, 0); delay(250); }
+  } else {
+    wifiDiag(WiFi.status());
+    WiFi.disconnect(true);
+    ledColor(40, 0, 0); delay(1500); ledColor(0, 0, 0);
+  }
+  printWifi();
+}
+
 // ---------- команды ----------
 void help() {
   Serial.println(F("\nКоманды: b (фон), s (скан с нажатиями), c N (канал), r N (0=1M,1=2M,2=250k),"));
   Serial.println(F("a N (адрес 0..3), f (фильтр), x (XN297 декод вкл/выкл), t (прицельный режим), p (сниффинг старт/стоп), # метка, ? справка"));
-  Serial.println(F("TX <hex> - передать нажатие (05=ВКЛ 09=ВЫКЛ 10=НОЧНИК 11=ДЕНЬ), CTR <n> - задать счётчик"));
+  Serial.println(F("TX <hex> - передать нажатие (05=ВКЛ 09=ВЫКЛ 10=НОЧНИК 11=ДЕНЬ 07=ТЕМП.ЦИКЛ), CTR <n> - задать счётчик"));
+  Serial.println(F("IP - адрес веб-пульта"));
+  Serial.printf("REP <n> - кадров в пачке (%u), PRESSREP <n> - повторов нажатия (%u)\n",
+                framesPerBurst, pressReps);
+  Serial.printf("PING - одиночная отправка (чередует ВКЛ/ВЫКЛ), RANGE <сек> - авто-тест дальности (%s)\n",
+                rangeMode ? "вкл" : "выкл");
   Serial.printf("AUTO 0/1 - авто-тест передачи на старте (%s)\n", autoTest ? "вкл" : "выкл");
   Serial.printf("Сейчас: канал %u, скорость %u, адрес %u, фильтр %s, XN297 %s, прицельный %s, сниффинг %s\n",
                 channel, rate, addrVariant, filterOn ? "вкл" : "выкл",
@@ -587,6 +835,51 @@ void processLine(String line) {
     Serial.printf("Авто-тест на старте: %s\n", autoTest ? "вкл" : "выкл");
     return;
   }
+  if (up.startsWith("PRESSREP")) {            // число повторов всей последовательности
+    String a = line.substring(8); a.trim();
+    if (a.length() == 0) { Serial.printf("Повторов нажатия: %u\n", pressReps); return; }
+    int v = a.toInt(); if (v < 1) v = 1; if (v > 10) v = 10;
+    pressReps = (uint8_t)v; prefs.putUChar("pressrep", pressReps);
+    Serial.printf("Повторов нажатия: %u\n", pressReps);
+    return;
+  }
+  if (up.startsWith("REP")) {                 // число кадров в одной пачке
+    String a = line.substring(3); a.trim();
+    if (a.length() == 0) { Serial.printf("Кадров в пачке: %u\n", framesPerBurst); return; }
+    int v = a.toInt(); if (v < 1) v = 1; if (v > 60) v = 60;
+    framesPerBurst = (uint8_t)v; prefs.putUChar("rep", framesPerBurst);
+    Serial.printf("Кадров в пачке: %u\n", framesPerBurst);
+    return;
+  }
+  if (up == "IP") { printWifi(); return; }
+  if (up == "PING") {                         // одиночная отправка, чередует ВКЛ/ВЫКЛ
+    Serial.printf("PING -> %s\n", pressNextOn ? "ВКЛ" : "ВЫКЛ");
+    doTx(pressNextOn ? 0x05 : 0x09);
+    pressNextOn = !pressNextOn;
+    return;
+  }
+  if (up.startsWith("RANGE")) {               // авто ВКЛ/ВЫКЛ раз в N секунд (0 = выкл)
+    String a = line.substring(5); a.trim();
+    if (a.length() == 0) {
+      Serial.printf("Авто-тест дальности: %s, интервал %lu мс\n",
+                    rangeMode ? "вкл" : "выкл", (unsigned long)rangeInterval);
+      return;
+    }
+    int secs = a.toInt();
+    if (secs <= 0) {
+      rangeMode = false;
+      prefs.putUChar("range", 0);
+      Serial.println(F("Авто-тест дальности выключен."));
+      return;
+    }
+    rangeInterval = (uint32_t)secs * 1000;
+    rangeMode = true;
+    rangeLast = 0;                            // сработает немедленно
+    prefs.putUChar("range", 1);               // переживёт перезагрузку - для теста от повербанка
+    prefs.putUInt("rangei", rangeInterval);
+    Serial.printf("Авто-тест дальности ВКЛ: чередую ВКЛ/ВЫКЛ каждые %d с (переживёт ребут). Выкл: RANGE 0\n", secs);
+    return;
+  }
 
   char c = line[0];
   int arg = line.length() > 1 ? line.substring(1).toInt() : -1;
@@ -641,6 +934,10 @@ void setup() {
   prefs.begin("chand", false);
   counter = prefs.getUInt("ctr", 0);
   autoTest = prefs.getUChar("autotest", 1) != 0;
+  framesPerBurst = prefs.getUChar("rep", framesPerBurst);
+  pressReps = prefs.getUChar("pressrep", pressReps);
+  rangeMode = prefs.getUChar("range", 0) != 0;      // авто-тест дальности переживает ребут
+  rangeInterval = prefs.getUInt("rangei", rangeInterval);
   ledSet(false);
 
   if (!radioInit()) {
@@ -650,13 +947,25 @@ void setup() {
   Serial.println(F("nRF24 найден."));
   help();
 
+  wifiSetup();  // до авто-теста, чтобы IP был виден сразу
+
 #ifndef AUTOTEST_DISABLED
-  if (autoTest) runAutoTest();
+  if (autoTest && !rangeMode) runAutoTest();   // в режиме RANGE сразу идём на непрерывный тест
 #endif
 }
 
 void loop() {
   if (Serial.available()) handleCommand();
+  if (wifiUp) server.handleClient();
+
+  // Авто-тест дальности: сам чередует ВКЛ/ВЫКЛ. doTx восстанавливает приём после каждой.
+  if (rangeMode && millis() - rangeLast >= rangeInterval) {
+    rangeLast = millis();
+    Serial.printf("[RANGE] -> %s\n", pressNextOn ? "ВКЛ" : "ВЫКЛ");
+    doTx(pressNextOn ? 0x05 : 0x09);
+    pressNextOn = !pressNextOn;
+  }
+
   if (sniffing && (readReg(REG_FIFO_STATUS) & 0x01) == 0) {
     uint8_t d[32];
     readPayload(d, 32);

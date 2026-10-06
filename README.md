@@ -38,11 +38,12 @@ ESP32 bridge can emulate a remote and expose each chandelier to Home Assistant.
 
 | Part | State | Notes |
 |------|-------|-------|
-| RF protocol decode | ✅ Done | Address, payload layout, commands, checksum, CRC — [PROTOCOL.md](PROTOCOL.md) |
+| RF protocol decode | ✅ Done | Two remotes decoded; address, payload, commands, checksum, CRC — [PROTOCOL.md](PROTOCOL.md) |
 | Sniffer firmware | ✅ Working | Receives and decodes live frames, prints `XN297 OK` lines |
-| Transmitter (replay) | 🟡 In progress | TX code emits CRC-valid frames; lamp reception not yet confirmed |
-| Rolling-counter enforcement | ❓ Unknown | Being tested — see [PROTOCOL.md](PROTOCOL.md#open-questions) |
-| ESPHome / Home Assistant | ⬜ Planned | Not started |
+| Transmitter (replay) | ✅ Working | Emulates a remote; all commands confirmed on the lamp |
+| ESPHome / Home Assistant | ✅ Working | Both chandeliers as HA entities (Chandelier 1 tested) — [firmware/esphome/](firmware/esphome/) |
+| Rolling-counter enforcement | ❓ Unknown | Appears loose/absent; see [PROTOCOL.md](PROTOCOL.md#open-questions) |
+| Independent control of both lamps | ❓ Untested | Remotes have distinct IDs, but lamp pairing not yet tested — [PROTOCOL.md](PROTOCOL.md#open-questions) |
 
 ## Hardware at a glance
 
@@ -100,8 +101,8 @@ rolling-counter override, boot self-test) is documented in the header comment of
 | [PROTOCOL.md](PROTOCOL.md) | The full decoded RF protocol |
 | [HARDWARE.md](HARDWARE.md) | Bill of materials and wiring |
 | [JOURNAL.md](JOURNAL.md) | Chronological development log / article notes |
-| [`firmware/sniffer/`](firmware/sniffer/) | Sniffer + replay firmware (PlatformIO, ESP32-S3) |
-| [`firmware/transmitter/`](firmware/transmitter/) | Final ESPHome transmitter — *in progress* |
+| [`firmware/sniffer/`](firmware/sniffer/) | Sniffer + replay + Wi-Fi test firmware (PlatformIO, ESP32-S3) |
+| [`firmware/esphome/`](firmware/esphome/) | Final ESPHome integration — both chandeliers as Home Assistant entities |
 | [`captures/`](captures/) | Raw and decoded RF capture logs ([how they were made](captures/README.md)) |
 | [`tools/`](tools/) | Python helpers for capturing and offline decoding |
 
