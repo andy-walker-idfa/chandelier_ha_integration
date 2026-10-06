@@ -38,9 +38,11 @@ color-temperature preset in a loop; there is no absolute value to read or set
    ```bash
    cd firmware/esphome
    cp example.secrets.yaml secrets.yaml
-   # edit secrets.yaml: wifi_ssid, wifi_password, ota_password, ap_password,
+   # edit secrets.yaml: wifi_ssid, wifi_password, ap_password,
    # api_encryption_key (openssl rand -base64 32)
    ```
+   OTA reuses `api_encryption_key` (encrypted OTA), so there is no separate OTA
+   password to set.
 3. The lamp IDs and pins are already set in `chandelier.yaml` (Chandelier 1 =
    `55 2A 75 00`, Chandelier 2 = `55 5D 73 00`; CE=9, CSN=10, SCK=12, MOSI=11,
    MISO=13). Adjust `frames_per_burst` there if you want more redundancy/range.

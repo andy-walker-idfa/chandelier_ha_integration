@@ -32,7 +32,7 @@ api:
 
 ota:
   - platform: esphome
-    password: !secret ota_password
+    encryption:   # OTA reuses the API encryption key above (no OTA password needed)
 
 wifi:
   ssid: !secret wifi_ssid
