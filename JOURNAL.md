@@ -121,6 +121,16 @@ Home Assistant. Several approaches were tried and rejected before landing on
   Wi-Fi. Counter persists in flash; the light is optimistic (one-way radio) and
   never transmits on boot.
 
+### 2026-10-07 — Captured brightness, and split out a reusable analyzer
+
+- Decoded the two brightness buttons (up `02`/`42`, down `03`/`43`) on both
+  remotes — relative, one step per press, no absolute level. Added to PROTOCOL.md.
+- Split the pure analysis part into a standalone **receive-only** firmware
+  (`firmware/rx-sniffer/`) with English comments/output and its own guide, so
+  anyone with a similar XN297 remote can reuse it to find their own address and
+  command bytes without the transmit/Wi-Fi machinery. Expanded the HARDWARE.md
+  schematic (full header pinout + connection list) for the write-up.
+
 ---
 
 *Next: confirm transmit reception up close, resolve the counter question, then

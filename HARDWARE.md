@@ -26,20 +26,39 @@ one capacitor. Nothing touches the chandelier's mains side.
 | IRQ  | *(leave unconnected)* |
 | — | **10–100 µF capacitor across VCC ↔ GND, at the module** |
 
+### Schematic
+
+The nRF24L01+ module has a 2×4 pin header, viewed from the top (antenna away
+from you). Only 7 of the 8 pins are used — IRQ is left unconnected:
+
 ```
-ESP32-S3                           nRF24L01+
-  3V3  ───────────────┬──────────────  VCC
-                      │
-                  [ 10–100 µF ]   (right at the module pins)
-                      │
-  GND  ───────────────┴──────────────  GND
-  GPIO9  ────────────────────────────  CE
-  GPIO10 ────────────────────────────  CSN
-  GPIO12 ────────────────────────────  SCK
-  GPIO11 ────────────────────────────  MOSI
-  GPIO13 ────────────────────────────  MISO
-                                       IRQ  (n/c)
+            nRF24L01+ header (top view)
+          ┌───────────────────────────┐
+     GND  │ ● GND        ● VCC         │  3V3  (+ 10–100 µF cap to GND here)
+     CSN  │ ● CE         ● CSN         │  → see connections
+     SCK  │ ● SCK        ● MOSI        │
+    MISO  │ ● MISO       ● IRQ   (n/c) │
+          └───────────────────────────┘
 ```
+
+Connections, in signal order:
+
+```
+  ESP32-S3 3V3  ──┬──────────────  nRF24 VCC
+                  │
+              [ 10–100 µF ]         electrolytic or ceramic, soldered/pushed
+                  │                 directly across the module's VCC and GND
+  ESP32-S3 GND  ──┴──────────────  nRF24 GND
+  ESP32-S3 GPIO9  ───────────────  nRF24 CE     (chip enable)
+  ESP32-S3 GPIO10 ───────────────  nRF24 CSN    (SPI chip select)
+  ESP32-S3 GPIO12 ───────────────  nRF24 SCK    (SPI clock)
+  ESP32-S3 GPIO11 ───────────────  nRF24 MOSI   (ESP32 → nRF24)
+  ESP32-S3 GPIO13 ───────────────  nRF24 MISO   (nRF24 → ESP32)
+  nRF24 IRQ  ── not connected
+```
+
+All signals are 3.3 V logic (the ESP32-S3 drives them directly; the nRF24 is a
+3.3 V part). VCC must be **3.3 V, not 5 V**.
 
 > The onboard RGB LED on `RGB_BUILTIN` (GPIO48 on the DevKitC-1) is used by the
 > firmware's boot self-test as a status indicator — no wiring needed.
