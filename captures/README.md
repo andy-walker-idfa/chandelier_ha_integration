@@ -37,6 +37,8 @@ longer sweeps.
 | `temp_cycle.log` | Targeted capture of six presses of the TEMP-cycle button (`07`/`47`), showing the phase-02 hold burst. |
 | `remote2_probe.log` | **Second remote**, ON ×5 in targeted mode (ch 50). Showed the same radio address as remote 1 with a different payload ID. |
 | `remote2_buttons.log` | **Second remote**, OFF / NIGHT / DAY / TEMP ×5 each, labeled `# R2 <button>`. |
+| `remote1_brightness.log` | **First remote**, brightness up (`02`/`42`) then down (`03`/`43`), labeled `# bright up` / `# bright down`. |
+| `remote2_brightness.log` | **Second remote**, brightness up then down — same command bytes, ID `55 5D 73 00`. |
 
 > **Before committing a new log:** firmware with Wi-Fi enabled prints the board's
 > LAN IP address at boot. Strip that line (and anything else network-related)

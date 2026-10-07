@@ -83,7 +83,7 @@ verified frame by frame with the XN297 CRC and the payload checksum.
 | Radio address | `AA 55 CC CC CC` | `AA 55 CC CC CC` (**same**) |
 | ID bytes (payload 1–4) | `55 2A 75 00` | `55 5D 73 00` (**different**) |
 | Data rate / channel tested | 250 kbps, hops incl. ch 50 | 250 kbps, ch 50 |
-| Command bytes | ON `05`, OFF `09`, NIGHT `10`, DAY `11`, TEMP `07` | identical |
+| Command bytes | ON `05`, OFF `09`, NIGHT `10`, DAY `11`, TEMP `07`, Bright+ `02`, Bright- `03` | identical (verified) |
 | Phase ≥ 01 command | `command + 0x40` | identical |
 | Checksum / CRC | sum of bytes 0–6; XN297 CRC-16 | identical |
 | Frames verified | hundreds | 636 (635 CRC-valid, all checksum-valid) |
@@ -107,11 +107,13 @@ still has to be tested at the lamps; see [Open questions](#open-questions).
 
 | Button | `command` byte (phase 00) | phase ≥ 01 (`+0x40`) | Semantics |
 |--------|---------------------------|----------------------|-----------|
-| ON         | `05` | `45` | Absolute (sets a state) |
-| OFF        | `09` | `49` | Absolute |
-| NIGHT      | `10` | `50` | *Pending verification* |
-| DAY        | `11` | `51` | *Pending verification* |
-| TEMP cycle | `07` | `47` | **Relative** — advances to the next color-temperature preset |
+| ON          | `05` | `45` | Absolute (sets a state) |
+| OFF         | `09` | `49` | Absolute |
+| NIGHT       | `10` | `50` | *Pending verification* |
+| DAY         | `11` | `51` | *Pending verification* |
+| TEMP cycle  | `07` | `47` | **Relative** — advances to the next color-temperature preset |
+| Bright up   | `02` | `42` | **Relative** — one brightness step up per press |
+| Bright down | `03` | `43` | **Relative** — one brightness step down per press |
 
 **Absolute vs relative.** An *absolute* command puts the lamp into a known state
 no matter what it was doing, so sending it twice is harmless. A *relative*
@@ -121,6 +123,12 @@ carries **no absolute color-temperature value**. A controller cannot read back o
 directly select a preset; it can only count presses from a known starting point.
 For the same reason a transmitter must not repeat a relative press with new
 counter values, since each repeat may advance the preset again.
+
+**Brightness is relative too.** Bright-up (`02`) and bright-down (`03`) send one
+step per press — no hold-to-ramp and no absolute brightness value on the wire.
+A controller can only nudge brightness up or down one step at a time, with no
+knowable absolute level. Both bytes were verified identical on Remote 1
+(`55 2A 75 00`) and Remote 2 (`55 5D 73 00`).
 
 ### Two-burst behavior
 
