@@ -72,7 +72,7 @@ Full bill of materials, caveats and the classic-ESP32 pinout are in
 
 1. **Build & flash the analyzer** (PlatformIO):
    ```bash
-   cd firmware/rx-sniffer
+   cd firmware/sniffer
    pio run -t upload
    ```
 2. **Open the serial monitor** at `115200` baud (line ending: newline). On the
@@ -91,14 +91,14 @@ Full bill of materials, caveats and the classic-ESP32 pinout are in
 ## Analyzing your own remote
 
 If you have a similar XN297-based remote, the receive-only
-[**`firmware/rx-sniffer/`**](firmware/rx-sniffer/) is a reusable analyzer with its
+[**`firmware/sniffer/`**](firmware/sniffer/) is a reusable analyzer with its
 own step-by-step guide — flash it, press your buttons, and read off your
 device's address, IDs and command bytes. That's the recommended starting point.
 
-The larger [`firmware/sniffer/`](firmware/sniffer/) is this project's combined
+The larger [`firmware/dev-bridge/`](firmware/dev-bridge/) is this project's combined
 dev firmware (it also transmits, serves a Wi-Fi test page, etc.); its full serial
 command set is documented in the header of
-[`firmware/sniffer/src/main.cpp`](firmware/sniffer/src/main.cpp).
+[`firmware/dev-bridge/src/main.cpp`](firmware/dev-bridge/src/main.cpp).
 
 ## Repository map
 
@@ -108,8 +108,8 @@ command set is documented in the header of
 | [PROTOCOL.md](PROTOCOL.md) | The full decoded RF protocol |
 | [HARDWARE.md](HARDWARE.md) | Bill of materials and wiring |
 | [JOURNAL.md](JOURNAL.md) | Chronological development log / article notes |
-| [`firmware/rx-sniffer/`](firmware/rx-sniffer/) | **Receive-only analyzer** — the reusable sniffer/decoder with its own guide ([README](firmware/rx-sniffer/README.md)) |
-| [`firmware/sniffer/`](firmware/sniffer/) | Combined dev firmware: sniff + replay + Wi-Fi test page (PlatformIO, ESP32-S3) |
+| [`firmware/sniffer/`](firmware/sniffer/) | **Receive-only analyzer** — the reusable sniffer/decoder with its own guide ([README](firmware/sniffer/README.md)) |
+| [`firmware/dev-bridge/`](firmware/dev-bridge/) | Combined dev firmware: sniff + replay + Wi-Fi test page (PlatformIO, ESP32-S3) |
 | [`firmware/esphome/`](firmware/esphome/) | Final ESPHome integration — both chandeliers as Home Assistant entities |
 | [`captures/`](captures/) | Raw and decoded RF capture logs ([how they were made](captures/README.md)) |
 | [`tools/`](tools/) | Python helpers for capturing and offline decoding |

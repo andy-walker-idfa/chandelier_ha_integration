@@ -65,7 +65,7 @@ To use different pins, edit the `#define PIN_*` block near the top of
 [PlatformIO](https://platformio.org/) (CLI or the VS Code extension):
 
 ```bash
-cd firmware/rx-sniffer
+cd firmware/sniffer
 pio run -t upload                 # build + flash over USB (auto-detects the port)
 pio run -t upload --upload-port COM6   # or name the port explicitly
 pio device monitor                # open the serial console (115200 baud)

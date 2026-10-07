@@ -4,7 +4,7 @@ Final firmware: the ESP32-S3 + nRF24L01+ bridge presented to Home Assistant over
 Wi-Fi as an ESPHome device, so both chandeliers appear as native HA entities.
 
 The RF transmit code is an **external component** ([`components/chandelier/`](components/chandelier/))
-that reuses the proven XN297 logic from [`../sniffer/`](../sniffer/) verbatim
+that reuses the proven XN297 logic from [`../dev-bridge/`](../dev-bridge/) verbatim
 (same scramble/xorout tables, CRC-16, bit-reversal, burst structure). Only the
 ESPHome wrapper (entity classes + codegen) is new.
 
@@ -85,4 +85,4 @@ added to dashboards or the mobile app.
 ```
 [chandelier] TX cmd 05 id 552A7500: 2 bursts x30 frames = 60, counter 0x3C..0x3D
 ```
-The onboard RGB LED also flashes on each send, as on the sniffer firmware.
+The onboard RGB LED also flashes on each send, as on the dev-bridge firmware.

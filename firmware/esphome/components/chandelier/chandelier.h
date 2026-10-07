@@ -3,7 +3,7 @@
 // ESPHome external component for the XN297L LED chandelier bridge.
 //
 // The radio logic here is a direct port of the proven transmit code from
-// firmware/sniffer/src/main.cpp (XN297 encode: bit-reverse + scramble + CRC-16,
+// firmware/dev-bridge/src/main.cpp (XN297 encode: bit-reverse + scramble + CRC-16,
 // nRF24L01+ in TX mode, channel hopping). It is NOT reimplemented — the byte
 // layout, scramble/xorout tables, CRC and burst structure are identical.
 //

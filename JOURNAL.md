@@ -90,9 +90,9 @@ Home Assistant. Several approaches were tried and rejected before landing on
 
 ### 2026-10-06 — Public documentation
 
-- Structured the repo for public release: `firmware/sniffer/`, reserved
-  `firmware/transmitter/`, `captures/`, `tools/`, and wrote README / PROTOCOL /
-  HARDWARE / this journal. MIT license.
+- Structured the repo for public release: the firmware (later renamed
+  `firmware/dev-bridge/`), a reserved transmitter folder, `captures/`, `tools/`,
+  and wrote README / PROTOCOL / HARDWARE / this journal. MIT license.
 
 ### 2026-10-06 — Range, redundancy, and a phone remote
 
@@ -125,11 +125,12 @@ Home Assistant. Several approaches were tried and rejected before landing on
 
 - Decoded the two brightness buttons (up `02`/`42`, down `03`/`43`) on both
   remotes — relative, one step per press, no absolute level. Added to PROTOCOL.md.
-- Split the pure analysis part into a standalone **receive-only** firmware
-  (`firmware/rx-sniffer/`) with English comments/output and its own guide, so
-  anyone with a similar XN297 remote can reuse it to find their own address and
-  command bytes without the transmit/Wi-Fi machinery. Expanded the HARDWARE.md
-  schematic (full header pinout + connection list) for the write-up.
+- Split the pure analysis part into a standalone **receive-only** firmware with
+  English comments/output and its own guide, so anyone with a similar XN297
+  remote can reuse it to find their own address and command bytes without the
+  transmit/Wi-Fi machinery. Named it `firmware/sniffer/` (the clean analyzer owns
+  the obvious name); the combined firmware became `firmware/dev-bridge/`. Expanded
+  the HARDWARE.md schematic (full header pinout + connection list) for the write-up.
 
 ---
 
