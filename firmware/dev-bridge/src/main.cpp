@@ -37,12 +37,16 @@
     PRESSREP <n> - сколько раз повторить всю последовательность нажатия (по умолч. 2). NVS.
     PING     - одиночная отправка, чередует ВКЛ/ВЫКЛ (удобно щёлкать вручную).
     RANGE <сек> - авто-тест дальности: сам шлёт ВКЛ/ВЫКЛ каждые N секунд; RANGE 0 - выкл.
-               Хранится в NVS и переживает перезагрузку - можно ходить с повербанком без ПК.
-               Светодиод мигает на каждой отправке - видно даже когда люстра не реагирует.
-    AUTO 0/1 - авто-тест передачи на старте (хранится в NVS, по умолчанию вкл): через 10 с
-               после включения шлёт ВКЛ, пауза 8 с, шлёт ВЫКЛ. Для проверки у люстры без ПК.
+               Работает сразу и взводит ОДНУ следующую загрузку - можно перейти на
+               повербанк. Светодиод мигает на каждой отправке.
+    AUTO 1   - взвести авто-тест на СЛЕДУЮЩУЮ загрузку (один раз): через 10 с после
+               включения шлёт ВКЛ, пауза 8 с, ВЫКЛ. AUTO 0 - снять взвод.
                Статусный RGB-светодиод: медленно мигает = взведён, горит = идёт передача,
                3 вспышки = пачка отправлена. Жёстко отключить в сборке: -DAUTOTEST_DISABLED
+
+  Безопасность: по умолчанию прошивка ничего не передаёт сама. Свежая прошивка,
+  стёртый NVS или обычная перезагрузка - молчание до команды. Взвод AUTO/RANGE
+  действует на одну загрузку и только для той же сборки (после перепрошивки сгорает).
     # текст  - метка в логе (например: # пульт1 вкл/выкл)
     ?        - справка
 
@@ -143,9 +147,24 @@ const uint8_t NCH = sizeof(CHANNELS);
 Preferences prefs;
 uint32_t counter = 0;
 
-// Авто-тест на старте: удобно проверить передачу у самой люстры без компьютера.
-// Хранится в NVS (по умолчанию вкл); выключается командой AUTO 0 или флагом сборки.
-bool autoTest = true;
+// Передача при старте (авто-тест AUTO и тест дальности RANGE) - только "взвод на
+// одну загрузку". По умолчанию прошивка МОЛЧИТ: пустой/стёртый NVS, новая прошивка
+// или обычная перезагрузка ничего не передают. AUTO 1 / RANGE N взводят СЛЕДУЮЩУЮ
+// загрузку; взвод привязан к этой сборке и сгорает при старте.
+bool autoTest = false;   // true только если взведено на ЭТУ загрузку
+
+// Идентификатор сборки: меняется при каждой перекомпиляции. Взвод от другой
+// прошивки игнорируется - свежепрошитое устройство всегда стартует молча.
+uint32_t buildId() {
+  const char *s = __DATE__ " " __TIME__;
+  uint32_t h = 2166136261u;
+  while (*s) { h ^= (uint8_t)*s++; h *= 16777619u; }
+  return h;
+}
+void armNextBoot(const char *key, bool on) {
+  prefs.putUChar(key, on ? 1 : 0);
+  if (on) prefs.putUInt("armbuild", buildId());
+}
 
 // Избыточность передачи (всё хранится в NVS, меняется на лету).
 // framesPerBurst - сколько кадров в одной пачке (крутим по списку каналов);
@@ -776,7 +795,7 @@ void help() {
                 framesPerBurst, pressReps);
   Serial.printf("PING - одиночная отправка (чередует ВКЛ/ВЫКЛ), RANGE <сек> - авто-тест дальности (%s)\n",
                 rangeMode ? "вкл" : "выкл");
-  Serial.printf("AUTO 0/1 - авто-тест передачи на старте (%s)\n", autoTest ? "вкл" : "выкл");
+  Serial.println(F("AUTO 1 - взвести авто-тест передачи на СЛЕДУЮЩУЮ загрузку (один раз), AUTO 0 - снять"));
   Serial.printf("Сейчас: канал %u, скорость %u, адрес %u, фильтр %s, XN297 %s, прицельный %s, сниффинг %s\n",
                 channel, rate, addrVariant, filterOn ? "вкл" : "выкл",
                 xn297Decode ? "вкл" : "выкл", targeted ? "вкл" : "выкл", sniffing ? "вкл" : "выкл");
@@ -829,10 +848,14 @@ void processLine(String line) {
   if (up.startsWith("AUTO")) {
     String a = line.substring(4);
     a.trim();
-    if (a.length() == 0) { Serial.printf("Авто-тест на старте: %s\n", autoTest ? "вкл" : "выкл"); return; }
-    autoTest = a.toInt() != 0;
-    prefs.putUChar("autotest", autoTest ? 1 : 0);
-    Serial.printf("Авто-тест на старте: %s\n", autoTest ? "вкл" : "выкл");
+    bool armed = prefs.getUChar("autoarm", 0) && prefs.getUInt("armbuild", 0) == buildId();
+    if (a.length() == 0) {
+      Serial.printf("Авто-тест: %s\n", armed ? "взведён на СЛЕДУЮЩУЮ загрузку" : "выкл");
+      return;
+    }
+    bool on = a.toInt() != 0;
+    armNextBoot("autoarm", on);  // только следующая загрузка; сгорает при старте
+    Serial.printf("Авто-тест: %s\n", on ? "взведён на СЛЕДУЮЩУЮ загрузку (один раз)" : "выкл");
     return;
   }
   if (up.startsWith("PRESSREP")) {            // число повторов всей последовательности
@@ -868,16 +891,18 @@ void processLine(String line) {
     int secs = a.toInt();
     if (secs <= 0) {
       rangeMode = false;
-      prefs.putUChar("range", 0);
+      armNextBoot("rangearm", false);
       Serial.println(F("Авто-тест дальности выключен."));
       return;
     }
     rangeInterval = (uint32_t)secs * 1000;
     rangeMode = true;
     rangeLast = 0;                            // сработает немедленно
-    prefs.putUChar("range", 1);               // переживёт перезагрузку - для теста от повербанка
+    // Взводим и СЛЕДУЮЩУЮ загрузку (один раз) - для теста от повербанка.
+    armNextBoot("rangearm", true);
     prefs.putUInt("rangei", rangeInterval);
-    Serial.printf("Авто-тест дальности ВКЛ: чередую ВКЛ/ВЫКЛ каждые %d с (переживёт ребут). Выкл: RANGE 0\n", secs);
+    Serial.printf("Авто-тест дальности ВКЛ: ВКЛ/ВЫКЛ каждые %d с; следующая загрузка тоже "
+                  "(один раз). Выкл: RANGE 0\n", secs);
     return;
   }
 
@@ -933,11 +958,22 @@ void setup() {
 
   prefs.begin("chand", false);
   counter = prefs.getUInt("ctr", 0);
-  autoTest = prefs.getUChar("autotest", 1) != 0;
+  // Передача при старте - только если взведено командой И этой же сборкой.
+  // Взвод сразу гасим: следующая загрузка снова молчит. Старые ключи
+  // ("autotest" со значением по умолчанию 1, "range") удаляем.
+  bool sameBuild = prefs.getUInt("armbuild", 0) == buildId();
+  autoTest = sameBuild && prefs.getUChar("autoarm", 0);
+  bool rangeArmed = sameBuild && prefs.getUChar("rangearm", 0);
+  prefs.putUChar("autoarm", 0);
+  prefs.putUChar("rangearm", 0);
+  prefs.remove("autotest");
+  prefs.remove("range");
   framesPerBurst = prefs.getUChar("rep", framesPerBurst);
   pressReps = prefs.getUChar("pressrep", pressReps);
-  rangeMode = prefs.getUChar("range", 0) != 0;      // авто-тест дальности переживает ребут
+  rangeMode = rangeArmed;                            // только если взведено на эту загрузку
   rangeInterval = prefs.getUInt("rangei", rangeInterval);
+  if (!autoTest && !rangeMode)
+    Serial.println(F("Передача при старте: нет (молчу до команды)."));
   ledSet(false);
 
   if (!radioInit()) {

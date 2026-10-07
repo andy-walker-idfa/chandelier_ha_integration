@@ -61,7 +61,8 @@ All signals are 3.3 V logic (the ESP32-S3 drives them directly; the nRF24 is a
 3.3 V part). VCC must be **3.3 V, not 5 V**.
 
 > The onboard RGB LED on `RGB_BUILTIN` (GPIO48 on the DevKitC-1) is used by the
-> firmware's boot self-test as a status indicator — no wiring needed.
+> transmitting firmwares (dev-bridge and ESPHome) to flash on each send — no
+> wiring needed. The receive-only analyzer doesn't use it.
 
 ### Classic ESP32 pinout
 

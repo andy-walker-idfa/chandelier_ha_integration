@@ -132,6 +132,19 @@ Home Assistant. Several approaches were tried and rejected before landing on
   the obvious name); the combined firmware became `firmware/dev-bridge/`. Expanded
   the HARDWARE.md schematic (full header pinout + connection list) for the write-up.
 
+### 2026-10-07 — Brightness in Home Assistant, and a silent-by-default dev firmware
+
+- Added **Brightness Up / Brightness Down** buttons for both chandeliers to the
+  ESPHome config (2 lights + 10 buttons now). They're buttons, not a slider,
+  because the protocol only has relative steps.
+- After an NVS wipe, the dev firmware's boot self-test had quietly turned itself
+  back **on** (its stored setting defaulted to enabled) and sent an ON/OFF to a
+  lamp on reset. Fixed: the dev-bridge now transmits nothing at boot unless
+  explicitly armed. `AUTO 1` / `RANGE N` arm a single next boot, the arm is
+  consumed at startup, and it's tied to the firmware build, so a fresh flash is
+  always silent. Verified on the device. The receive-only analyzer was checked
+  again and has no transmit path at all.
+
 ---
 
 *Next: confirm transmit reception up close, resolve the counter question, then
