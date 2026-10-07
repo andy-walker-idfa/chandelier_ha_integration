@@ -2,8 +2,9 @@
 #
 # One device drives both chandeliers over RF. Entities in Home Assistant:
 #   light.chandelier_1 / light.chandelier_2         (on/off, optimistic)
-#   button.chandelier_1_night / _day / _next_temperature
-#   button.chandelier_2_night / _day / _next_temperature
+#   button.chandelier_1_night / _day / _next_temperature / _brightness_up / _brightness_down
+#   button.chandelier_2_night / _day / _next_temperature / _brightness_up / _brightness_down
+# send() takes the phase-00 command byte and derives phase 01 (+0x40) itself.
 #
 # Lamp IDs (payload bytes 1-4, from PROTOCOL.md):
 #   Chandelier 1 = 55 2A 75 00
@@ -84,6 +85,14 @@ button:
     name: "Chandelier 1 Next Temperature"   # relative: one step per press, no absolute state
     on_press:
       - lambda: 'id(hub).send(0x55, 0x2A, 0x75, 0x00, 0x07);'
+  - platform: template
+    name: "Chandelier 1 Brightness Up"      # relative: one step up per press
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x2A, 0x75, 0x00, 0x02);'
+  - platform: template
+    name: "Chandelier 1 Brightness Down"    # relative: one step down per press
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x2A, 0x75, 0x00, 0x03);'
   # --- Chandelier 2 ---
   - platform: template
     name: "Chandelier 2 Night"
@@ -97,6 +106,14 @@ button:
     name: "Chandelier 2 Next Temperature"
     on_press:
       - lambda: 'id(hub).send(0x55, 0x5D, 0x73, 0x00, 0x07);'
+  - platform: template
+    name: "Chandelier 2 Brightness Up"
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x5D, 0x73, 0x00, 0x02);'
+  - platform: template
+    name: "Chandelier 2 Brightness Down"
+    on_press:
+      - lambda: 'id(hub).send(0x55, 0x5D, 0x73, 0x00, 0x03);'
 
 # To adjust frames-per-burst live from HA, uncomment:
 # number:

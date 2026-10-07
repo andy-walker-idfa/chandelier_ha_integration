@@ -20,15 +20,21 @@ ESPHome wrapper (entity classes + codegen) is new.
 | `button.chandelier_1_night`, `button.chandelier_2_night` | Button | Sends NIGHT `10` |
 | `button.chandelier_1_day`, `button.chandelier_2_day` | Button | Sends DAY `11` |
 | `button.chandelier_1_next_temperature`, `button.chandelier_2_next_temperature` | Button | Sends TEMP `07` |
+| `button.chandelier_1_brightness_up`, `button.chandelier_2_brightness_up` | Button | Sends BRIGHT+ `02` |
+| `button.chandelier_1_brightness_down`, `button.chandelier_2_brightness_down` | Button | Sends BRIGHT− `03` |
+
+That's **2 lights + 10 buttons** in total. Every button passes only the phase-00
+command byte; the component derives the phase-01 byte (`+0x40`) itself.
 
 **State is one-way / optimistic.** The radio link has no feedback, so each light
 shows the *last command sent*, not the lamp's real state — it can drift if the
 physical remote is used. Rebooting the bridge never transmits (lights restore as
 "off" and the on-boot state apply is suppressed in the component).
 
-**"Next Temperature" is relative.** Each press advances to the next
-color-temperature preset in a loop; there is no absolute value to read or set
-(see [../../PROTOCOL.md](../../PROTOCOL.md)).
+**"Next Temperature" and "Brightness Up/Down" are relative.** Each press moves
+one step (next color-temperature preset, or one brightness step); there is no
+absolute value to read or set, which is why brightness is two buttons rather than
+a slider (see [../../PROTOCOL.md](../../PROTOCOL.md)).
 
 ## Setup
 
@@ -76,7 +82,7 @@ the discovered "Chandelier Bridge". If not discovered, **Add Integration →
 ESPHome**, enter the device's IP (or `chandelier-bridge.local`) and port `6053`,
 and paste the `api_encryption_key` from your `secrets.yaml` when prompted.
 
-The six entities above then appear under the Chandelier Bridge device and can be
+The 12 entities above (2 lights + 10 buttons) then appear under the Chandelier Bridge device and can be
 added to dashboards or the mobile app.
 
 ## Debugging
